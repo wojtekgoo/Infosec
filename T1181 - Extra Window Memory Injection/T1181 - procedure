@@ -1,0 +1,13 @@
+Procedure based on:
+   https://modexp.wordpress.com/2018/08/26/process-injection-ctray/
+   https://github.com/odzhan/injection
+     
+1. Compile T1181-EWMI.c with VS x64 command line:
+   cmd> cl /nologo /MD T1181-EWMI.c
+
+2. Run build.bat with VS x64 command line to compile payload
+
+3. Download T1181-EWMI.exe and T1181-payload.bin to company machine
+
+4. Execute T1181-EWMI.exe
+   cmd> T1181-EWMI.exe T1181-payload.bin
